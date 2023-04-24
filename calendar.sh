@@ -6,7 +6,8 @@ logged_in_user=""
 # account creation
 function create() {
 	printf "\n*** Acount Creation ***\n"
-  
+ 		
+        #creates file for user accounts and ensures that username is not taken
   	touch -a ./users
 	correct_username="False"
 	read -p "Enter username: " username
@@ -18,6 +19,7 @@ function create() {
 		fi	
 	done
 
+	#Ensures that password fulfills requirements
 	correct_password="False"
 	read -s -p "Enter password: " password
 	while [ $correct_password == "False" ]; do
@@ -28,6 +30,7 @@ function create() {
 			correct_password="True"
 		fi
 	done
+	#Adds username and password to database and logs in user
 	echo "username:$username" >> users
 	echo "password:$password" >> users
 	logged_in="True"
@@ -41,6 +44,7 @@ function login() {
 
   read -p "Enter username: " username
   read -s -p "Enter password: " password
+  #Ensures that username and password are correct and logs user in if they are
   password_compare=$(grep -A1 --no-group-separator -iE "^username:$username$" users | grep -v "^username:") 
   if [ $? -eq 0 ] && [[ $password_compare =~ ^password:$password$ ]]; then
 	logged_in="True"
@@ -65,12 +69,16 @@ function search() {
   while [ ! -z "$input" ]; do
 	  event_name=$(echo $input | sed -r "s/(.*),.*/\1/") 
 	  date=$(echo $input | sed -r "s/.*,(.*)/\1/")
+	  #Returns full calendar for a user
 	  if [[ $event_name == "*" ]] && [[ $date == "*" ]]; then
 		  grep -iE "^user: $logged_in_user, .*" cal_db | sed -r "s/^user: $logged_in_user, (.*)/\1/"
+	  #Returns all events for a certain date for a user
 	  elif [[ $event_name == "*" ]]; then
 		  grep -iE "^user: $logged_in_user, .*, date: $date.*" cal_db | sed -r "s/^user: $logged_in_user, (.*)/\1/"
+	  #Returns all events of a certain name for a user
 	  elif [[ $date == "*" ]]; then
 		  grep -iE "^user: $logged_in_user, event: $event_name.*" cal_db | sed -r "s/^user: $logged_in_user, (.*)/\1/"
+	  #Returns all events matching name and date for a user
 	  else 
 		  grep -iE "^user: $logged_in_user, event: $event_name, date: $date, .*" cal_db | sed -r "s/^user: $logged_in_user, (.*)/\1/"
 	  fi
@@ -79,6 +87,8 @@ function search() {
   done
 }
 
+
+#Adds an event to the calendar based on user input
 function add_to_cal() {
 
   printf "\n*** Add to calendar **\n"
@@ -89,6 +99,7 @@ function add_to_cal() {
 
   repeat=0
 
+  #Sets how often an event should be repeated based on the flag entered
   for flag in "${flags[@]}"; do
 	if [[ $flag == "-d" ]]; then
 		repeat=4
@@ -104,11 +115,14 @@ function add_to_cal() {
   if [[ repeat -gt 0 ]]; then
 	  read -p "How long would you like to repeat this event until (format: 05/15/23). Please ensure that the entered date is after the original event date: " go_until
   fi
-
+  
+  #Reformats go_until_date for comparison
   go_until_date=$(date +%Y%m%d -d "$go_until")
 
+  #No repeat
   if [[ repeat -eq 0 ]]; then
 	  echo "user: $logged_in_user, event: $event_name, date: $date, time: $time" >> cal_db
+  #Repeat yearly
   elif [[ repeat -eq 1 ]]; then
 	  next_date=$(date +%Y%m%d -d "$date") 
 	  while [ $next_date -le $go_until_date ]; do	
@@ -116,6 +130,7 @@ function add_to_cal() {
 		echo "user: $logged_in_user, event: $event_name, date: $nd_form, time: $time" >> cal_db
 		next_date=$(date +%Y%m%d -d "$next_date + 1 year")	
 	  done 
+  #Repeat monthly
   elif [[ repeat -eq 2 ]]; then
           next_date=$(date +%Y%m%d -d "$date")
           while [[ $next_date -le $go_until_date ]]; do
@@ -123,6 +138,7 @@ function add_to_cal() {
                 echo "user: $logged_in_user, event: $event_name, date: $nd_form, time: $time" >> cal_db
                 next_date=$(date +%Y%m%d -d "$next_date + 1 month") 
           done
+  #Repeat weekly
   elif [[ repeat -eq 3 ]]; then
           next_date=$(date +%Y%m%d -d "$date")
           while [[ $next_date -le $go_until_date ]]; do
@@ -130,6 +146,7 @@ function add_to_cal() {
                 echo "user: $logged_in_user, event: $event_name, date: $nd_form, time: $time" >> cal_db
                 next_date=$(date +%Y%m%d -d "$next_date + 1 week")
           done
+  #Repeat daily
   elif [[ repeat -eq 4 ]]; then
           next_date=$(date +%Y%m%d -d "$date")
           while [[ $next_date -le $go_until_date ]]; do
@@ -140,15 +157,18 @@ function add_to_cal() {
   fi
 }
 
+#Displays next seven days (and today) of events to the user
 function upcoming_events() {
   printf "\n*** Upcoming events **\n"
   printf "\n*** Here are your events for the next week! **\n"
+  #Iterates through next seven days (and today) and displays the events in order by days
   for i in {0..7}; do
 	date_form=$(date +%m/%d/%y -d "$DATE + $i day")
   	grep -iE "date: $date_form, " cal_db | sed -r "s/^user: $logged_in_user, (.*)/\1/"
   done
 }
 
+#Allows a user to delete events
 function delete_events() {
   printf "\n*** Delete Events ***\n"
   printf "To delete events from your calendar by event name and date, enter \"<event name>,<date>\".\n"
@@ -161,13 +181,17 @@ function delete_events() {
   while [ ! -z "$input" ]; do
           event_name=$(echo $input | sed -r "s/(.*),.*/\1/")
           date=$(echo $input | sed -r "s/.*,(.*)/\1/")
-          if [[ $event_name == "*" ]] && [[ $date == "*" ]]; then
+          #Deletes full calendar for a user
+	  if [[ $event_name == "*" ]] && [[ $date == "*" ]]; then
                   sed -i -r "s|^user: $logged_in_user, .*||i" cal_db
-          elif [[ $event_name == "*" ]]; then
+          #Returns all events for a certain date for a user
+	  elif [[ $event_name == "*" ]]; then
                   sed -i -r "s|^user: $logged_in_user, .*, date: $date, .*||i" cal_db 
-          elif [[ $date == "*" ]]; then
+          #Returns all events for an event name for a user
+	  elif [[ $date == "*" ]]; then
                   sed -i -r "s|^user: $logged_in_user, event: $event_name, .*||i" cal_db 
- 	  else
+ 	  #Returns all events based on event name and date for a user
+	  else
                   sed -i -r "s|^user: $logged_in_user, event: $event_name, date: $date, .*||i" cal_db 
           fi
         printf "\nWhat events would you like to delete? "
@@ -176,11 +200,14 @@ function delete_events() {
   sed -ir "/^$/d" cal_db
 }
 
+#Sets up weekly email of upcoming events
 function get_weekly_email() {
   printf "\n*** Receive weekly email ***\n"
   read -p "Enter your email to receive weekly updates of your upcoming events: " email
   if [ ! -z "$email" ]; then
     path=$(pwd)
+
+    #Writes script to email_script.sh which gets a users upcoming events for the next week
     echo "#!/bin/bash" > email_script.sh
     echo "recipient=\"$email\"" >> email_script.sh
     echo "subject=\"Calendar - Weekly Events\"" >> email_script.sh
@@ -191,6 +218,8 @@ function get_weekly_email() {
     echo "done" >> email_script.sh
     echo "body=\$(cat upcoming_events)" >> email_script.sh
     echo "echo -e \"\$body\" | mail -s \"\$subject\" \"\$recipient\"" >> email_script.sh 
+
+    #Permissions and adds email_script.sh to crontab for every sunday at 12pm
     chmod +x email_script.sh
     (crontab -l ; echo "0 12 * * 0 $path/email_script.sh") | crontab -
     #(crontab -l ; echo "* * * * * $path/email_script.sh") | crontab -
@@ -198,9 +227,11 @@ function get_weekly_email() {
   fi
 }
 
+#Removes user from weekly email list
 function remove_weekly_email() {
   printf "\nYou are no longer receiving weekly email reminders.\n"
   path=$(pwd)
+  #Removes email_script.sh from crontab list
   crontab -l | grep -v "$path/email_script.sh" | crontab -
 }
  
