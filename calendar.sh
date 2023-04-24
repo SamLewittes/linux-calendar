@@ -175,6 +175,34 @@ function delete_events() {
   done
   sed -ir "/^$/d" cal_db
 }
+
+function get_weekly_email() {
+  printf "\n*** Receive weekly email ***\n"
+  read -p "Enter your email to receive weekly updates of your upcoming events: " email
+  if [ ! -z "$email" ]; then
+    path=$(pwd)
+    echo "#!/bin/bash" > email_script.sh
+    echo "recipient=\"$email\"" >> email_script.sh
+    echo "subject=\"Calendar - Weekly Events\"" >> email_script.sh
+    echo "echo \"Here are your events for the next week: \" > upcoming_events" >> email_script.sh
+    echo "for i in {0..7}; do" >> email_script.sh
+    echo "date_form=\$(date +%m/%d/%y -d \"\$DATE + \$i day\")" >> email_script.sh
+    echo "grep -iE \"date: \$date_form, \" $path/cal_db | sed -r \"s/^user: $logged_in_user, (.*)/\\1/\" >> upcoming_events" >> email_script.sh
+    echo "done" >> email_script.sh
+    echo "body=\$(cat upcoming_events)" >> email_script.sh
+    echo "echo -e \"\$body\" | mail -s \"\$subject\" \"\$recipient\"" >> email_script.sh 
+    chmod 777 email_script.sh
+    (crontab -l ; echo "0 12 * * 0 $path/email_script.sh") | crontab -
+    #(crontab -l ; echo "* * * * * $path/email_script.sh") | crontab -
+    printf "\nNow sending a weekly email update to: $email. Check your inbox at 12pm every Sunday!\n"
+  fi
+}
+
+function remove_weekly_email() {
+  printf "\nYou are no longer receiving weekly email reminders.\n"
+  path=$(pwd)
+  crontab -l | grep -v "$path/email_script.sh" | crontab -
+}
  
 # not logged in main menu
 function non_login_main() {
@@ -208,7 +236,7 @@ function non_login_main() {
 function logged_in_main() {
   printf "\nWelcome to the linux calendar program! You are logged in as $logged_in_user. What would you like to do?\n"
   cal -y
-  printf "\t[1] Search calendar\n\t[2] Add to calendar\n\t[3] Upcoming events\n\t[4] Delete events\n\t[<Enter> or CTRL+D] Quit\n"
+  printf "\t[1] Search calendar\n\t[2] Add to calendar\n\t[3] Upcoming events\n\t[4] Delete events\n\t[5] Receive email reminders\n\t[6] Stop email reminders\n\t[<Enter> or CTRL+D] Quit\n"
   read option
   while [ ! -z "$option" ]; do
     case "$option" in
@@ -224,12 +252,18 @@ function logged_in_main() {
       4) 
 	delete_events
 	;;
+      5)
+	get_weekly_email
+	;;
+      6)
+	remove_weekly_email
+	;;
       *)
         printf "Invalid option.\n"
         ;;
     esac
     printf "\nWelcome to the linux calendar program! You are logged in as $logged_in_user. What would you like to do?\n"
-    printf "\t[1] Search calendar\n\t[2] Add to calendar\n\t[3] Upcoming events\n\t[4] Delete events\n\t[<Enter> or CTRL+D] Quit\n" 
+    printf "\t[1] Search calendar\n\t[2] Add to calendar\n\t[3] Upcoming events\n\t[4] Delete events\n\t[5] Receive email reminders\n\t[6] Stop email reminders\n\t[<Enter> or CTRL+D] Quit\n" 
     read option
   done
   printf "Shutting down...\n"
