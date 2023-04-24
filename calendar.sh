@@ -7,8 +7,9 @@ logged_in_user=""
 function create() {
 	printf "\n*** Acount Creation ***\n"
  		
-        #creates file for user accounts and ensures that username is not taken
+        #creates file for user accounts, database and ensures that username is not taken
   	touch -a ./users
+	touch -a ./cal_db
 	correct_username="False"
 	read -p "Enter username: " username
 	while [ $correct_username == "False" ]; do
