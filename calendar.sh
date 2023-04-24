@@ -191,7 +191,7 @@ function get_weekly_email() {
     echo "done" >> email_script.sh
     echo "body=\$(cat upcoming_events)" >> email_script.sh
     echo "echo -e \"\$body\" | mail -s \"\$subject\" \"\$recipient\"" >> email_script.sh 
-    chmod 777 email_script.sh
+    chmod +x email_script.sh
     (crontab -l ; echo "0 12 * * 0 $path/email_script.sh") | crontab -
     #(crontab -l ; echo "* * * * * $path/email_script.sh") | crontab -
     printf "\nNow sending a weekly email update to: $email. Check your inbox at 12pm every Sunday!\n"
