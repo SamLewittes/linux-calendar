@@ -197,7 +197,7 @@ function delete_events() {
         printf "\nWhat events would you like to delete? "
         read input
   done
-  sed -ir "/^$/d" cal_db
+  sed -i -r "/^$/d" cal_db
 }
 
 #Sets up weekly email of upcoming events
